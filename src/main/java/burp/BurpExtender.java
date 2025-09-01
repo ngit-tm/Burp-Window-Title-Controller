@@ -17,6 +17,8 @@ public class BurpExtender implements BurpExtension {
     // - licensed to .を抽出するパターン
     private static final Pattern LICENSED_TO_PATTERN = Pattern.compile(" - licensed to .*",Pattern.CASE_INSENSITIVE);
 
+    private JMenuItem currentItem;
+
     @Override
     public void initialize(MontoyaApi api) {
         this.api = api;
@@ -26,7 +28,10 @@ public class BurpExtender implements BurpExtension {
         this.burpFrame = (JFrame) api.userInterface().swingUtils().suiteFrame();
         this.originalTitle = burpFrame.getTitle();
 
+        addTitleMenu();
+
         applyTitle(false);
+        updateCurrentMenuItem();
 
         api.extension().registerUnloadingHandler(()-> safeSetTitle(originalTitle));
 
@@ -41,6 +46,28 @@ public class BurpExtender implements BurpExtension {
         if (force || !desired.equals(now)) {
             safeSetTitle(desired);
         }
+    }
+
+    private void addTitleMenu(){
+        JMenuBar bar = burpFrame.getJMenuBar();
+        if(bar == null){
+            api.logging().logToError("Error: MenuBar not found.");
+            return;
+        }
+        JMenu titleMenu = new JMenu("Title");
+
+        currentItem = new JMenuItem();
+        currentItem.setEnabled(false);
+        titleMenu.add(currentItem);
+
+        bar.add(titleMenu);
+        bar.revalidate();
+        bar.repaint();
+    }
+
+    private void updateCurrentMenuItem() {
+        String shown = burpFrame.getTitle();
+        currentItem.setText("Current: " + (shown == null ? "" : shown));
     }
 
     private String computeDesiredTitle(String current) {
