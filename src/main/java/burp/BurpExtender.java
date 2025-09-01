@@ -20,7 +20,7 @@ public class BurpExtender implements BurpExtension {
 
     // Menu item to display current title (read-only)
     private JMenuItem currentItem;
-    // Prevent duplicate "Title" menus on reload/unload:
+    // Prevent duplicate "Title" menus on reload/unload
     private JMenu titleMenu;
     private static final String MENU_ID = "bwtc-title-menu";
 
