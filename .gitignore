@@ -2,7 +2,10 @@
 *.log
 
 .gradle/
-build/
+build/classes
+build/resources
+build/tmp
+build/generated
 
 *.iml
 .idea/
