@@ -41,7 +41,7 @@ public class BurpExtender implements BurpExtension {
     }
 
         private void applyTitle(boolean force) {
-        String desired = computeDesiredTitle(burpFrame.getTitle());
+        String desired = computeDesiredTitle();
         String now = burpFrame.getTitle();
         if (force || !desired.equals(now)) {
             safeSetTitle(desired);
@@ -60,6 +60,17 @@ public class BurpExtender implements BurpExtension {
         currentItem.setEnabled(false);
         titleMenu.add(currentItem);
 
+        titleMenu.addSeparator();
+
+        JCheckBoxMenuItem hide = new JCheckBoxMenuItem("Hide 'licensed to' text", isLicenseHidden);
+        hide.addActionListener(e -> {
+            isLicenseHidden = hide.getState();
+            applyTitle(true);
+            updateCurrentMenuItem();
+            api.logging().logToOutput("Hide license text = " + isLicenseHidden);
+        });
+        titleMenu.add(hide);
+
         bar.add(titleMenu);
         bar.revalidate();
         bar.repaint();
@@ -70,8 +81,8 @@ public class BurpExtender implements BurpExtension {
         currentItem.setText("Current: " + (shown == null ? "" : shown));
     }
 
-    private String computeDesiredTitle(String current) {
-        String base = (current == null) ? "" : current;
+    private String computeDesiredTitle() {        
+        String base = (originalTitle == null) ? "" : originalTitle;
         if (isLicenseHidden) {
             base = LICENSED_TO_PATTERN.matcher(base).replaceFirst("");
         }
