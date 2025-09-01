@@ -1,5 +1,8 @@
 # Burp Window Title Controller
 
+<img width="403" height="213" alt="Burp Suite window with custom title set by Burp Window Title Controller
+" src="https://github.com/user-attachments/assets/38aa8875-26a0-409b-86a7-0ff26a33be43" />
+
 This is a Burp Suite extension built with the Montoya API.  
 It allows you to control and customize the Burp Suite window title beyond the default display.
 
