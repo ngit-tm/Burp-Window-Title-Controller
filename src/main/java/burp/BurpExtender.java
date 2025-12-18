@@ -2,6 +2,7 @@ package burp;
 
 import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.core.Registration;
 import javax.swing.*;
 import java.util.regex.Pattern;
 
@@ -20,9 +21,7 @@ public class BurpExtender implements BurpExtension {
 
     // Menu item to display current title (read-only)
     private JMenuItem currentItem;
-    // Prevent duplicate "Title" menus on reload/unload
-    private JMenu titleMenu;
-    private static final String MENU_ID = "bwtc-title-menu";
+    private Registration menuRegistration;
 
 
     @Override
@@ -42,7 +41,7 @@ public class BurpExtender implements BurpExtension {
         // On unload, restore the original title and remove our menu to avoid leftover UI artifacts
         api.extension().registerUnloadingHandler(() -> {
             safeSetTitle(originalTitle);
-            removeMenuIfPresent();
+            deregisterMenuIfPresent();
         });
 
         // logging
@@ -53,15 +52,9 @@ public class BurpExtender implements BurpExtension {
     // Add Title menu
     // Remove an existing instance (if any) before adding a fresh one
     private void addTitleMenu(){
-        JMenuBar bar = burpFrame.getJMenuBar();
-        if(bar == null){
-            api.logging().logToError("Error: MenuBar not found.");
-            return;
-        }
-        removeMenuIfPresent();
+        deregisterMenuIfPresent();
 
-        this.titleMenu = new JMenu("Title");
-        this.titleMenu.setName(MENU_ID);
+        JMenu titleMenu = new JMenu("Title");
 
         // Current window title (read only item)
         currentItem = new JMenuItem();
@@ -120,9 +113,10 @@ public class BurpExtender implements BurpExtension {
         });
         titleMenu.add(reset);
 
-        bar.add(titleMenu);
-        bar.revalidate();
-        bar.repaint();
+        menuRegistration = api.userInterface().menuBar().registerMenu(titleMenu);
+        if (menuRegistration == null) {
+            api.logging().logToError("Failed to register Title menu via Montoya API.");
+        }
     }
 
     // Update "Current: ..." menu item to reflect current title
@@ -159,23 +153,12 @@ public class BurpExtender implements BurpExtension {
         }
     }
 
-    // Find and remove our menu by MENU_ID.
-    private void removeMenuIfPresent() {
-    Runnable r = () -> {
-        JMenuBar bar = burpFrame.getJMenuBar();
-        if (bar == null) return;
-        for (int i = 0; i < bar.getMenuCount(); i++) {
-            JMenu m = bar.getMenu(i);
-            if (m != null && MENU_ID.equals(m.getName())) {
-                bar.remove(i);
-                bar.revalidate();
-                bar.repaint();
-                api.logging().logToOutput("Removed existing Title menu.");
-                break;
-            }
+    // Remove registered menu if present to avoid duplicate entries on reload/unload
+    private void deregisterMenuIfPresent() {
+        if (menuRegistration != null && menuRegistration.isRegistered()) {
+            menuRegistration.deregister();
         }
-    };
-    if (SwingUtilities.isEventDispatchThread()) r.run();
-    else SwingUtilities.invokeLater(r);
+        menuRegistration = null;
+        currentItem = null;
     }
 }
