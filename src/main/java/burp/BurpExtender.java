@@ -2,7 +2,6 @@ package burp;
 
 import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
-import burp.api.montoya.core.Registration;
 import javax.swing.*;
 import java.awt.*;
 import java.util.regex.Pattern;
@@ -19,13 +18,10 @@ public class BurpExtender implements BurpExtension {
     // Regex pattern to match " - licensed to ..."
     private static final Pattern LICENSED_TO_PATTERN =
             Pattern.compile("\\s-\\slicensed\\sto\\s.*", Pattern.CASE_INSENSITIVE);
-    private static final int MAX_TITLE_LENGTH = 60;
+    private static final int MAX_TITLE_LENGTH = 120;
 
     // Menu item to display current title (read-only)
     private JMenuItem currentItem;
-    private Registration menuRegistration;
-
-
     @Override
     public void initialize(MontoyaApi api) {
         this.api = api;
@@ -40,10 +36,9 @@ public class BurpExtender implements BurpExtension {
         applyTitle(true);
         updateCurrentMenuItem();
 
-        // On unload, restore the original title and remove our menu to avoid leftover UI artifacts
+        // On unload, restore the original title
         api.extension().registerUnloadingHandler(() -> {
             safeSetTitle(originalTitle);
-            deregisterMenuIfPresent();
         });
 
         // logging
@@ -54,8 +49,6 @@ public class BurpExtender implements BurpExtension {
     // Add Title menu
     // Remove an existing instance (if any) before adding a fresh one
     private void addTitleMenu(){
-        deregisterMenuIfPresent();
-
         JMenu titleMenu = new JMenu("Title");
 
         // Current window title (read only item)
@@ -86,17 +79,35 @@ public class BurpExtender implements BurpExtension {
             Dimension pref = field.getPreferredSize();
             field.setPreferredSize(new Dimension(480, pref.height));
             JLabel info = new JLabel("Enter window title (max " + MAX_TITLE_LENGTH + " characters).");
-            Object[] message = {info, field};
 
-            int result = JOptionPane.showConfirmDialog(
-                    burpFrame,
-                    message,
-                    "Set Custom Title",
-                    JOptionPane.OK_CANCEL_OPTION,
-                    JOptionPane.PLAIN_MESSAGE
-            );
+            JPanel content = new JPanel(new BorderLayout(0, 8));
+            content.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+            content.add(info, BorderLayout.NORTH);
+            content.add(field, BorderLayout.CENTER);
 
-            if (result == JOptionPane.OK_OPTION) {
+            JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+            JButton okButton = new JButton("OK");
+            JButton cancelButton = new JButton("Cancel");
+            buttonsPanel.add(cancelButton);
+            buttonsPanel.add(okButton);
+            content.add(buttonsPanel, BorderLayout.SOUTH);
+
+            final boolean[] accepted = {false};
+            JDialog dialog = new JDialog(burpFrame, "Set Custom Title", true);
+            okButton.addActionListener(evt -> {
+                accepted[0] = true;
+                dialog.dispose();
+            });
+            cancelButton.addActionListener(evt -> dialog.dispose());
+
+            dialog.setContentPane(content);
+            dialog.pack();
+            dialog.setLocationRelativeTo(burpFrame);
+            dialog.getRootPane().setDefaultButton(okButton);
+            SwingUtilities.invokeLater(field::requestFocusInWindow);
+            dialog.setVisible(true);
+
+            if (accepted[0]) {
                 String input = field.getText();
                 if (input != null) {
                     input = input.trim();
@@ -131,8 +142,7 @@ public class BurpExtender implements BurpExtension {
         });
         titleMenu.add(reset);
 
-        menuRegistration = api.userInterface().menuBar().registerMenu(titleMenu);
-        if (menuRegistration == null) {
+        if (api.userInterface().menuBar().registerMenu(titleMenu) == null) {
             api.logging().logToError("Failed to register Title menu via Montoya API.");
         }
     }
@@ -171,12 +181,4 @@ public class BurpExtender implements BurpExtension {
         }
     }
 
-    // Remove registered menu if present to avoid duplicate entries on reload/unload
-    private void deregisterMenuIfPresent() {
-        if (menuRegistration != null && menuRegistration.isRegistered()) {
-            menuRegistration.deregister();
-        }
-        menuRegistration = null;
-        currentItem = null;
-    }
 }
