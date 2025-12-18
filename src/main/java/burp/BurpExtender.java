@@ -4,6 +4,7 @@ import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.Registration;
 import javax.swing.*;
+import java.awt.*;
 import java.util.regex.Pattern;
 
 public class BurpExtender implements BurpExtension {
@@ -18,6 +19,7 @@ public class BurpExtender implements BurpExtension {
     // Regex pattern to match " - licensed to ..."
     private static final Pattern LICENSED_TO_PATTERN =
             Pattern.compile("\\s-\\slicensed\\sto\\s.*", Pattern.CASE_INSENSITIVE);
+    private static final int MAX_TITLE_LENGTH = 60;
 
     // Menu item to display current title (read-only)
     private JMenuItem currentItem;
@@ -80,25 +82,41 @@ public class BurpExtender implements BurpExtension {
         setCustom.addActionListener(e -> {
             // Initial value: use customTitle if set, else current title
             String initial = (customTitle != null) ? customTitle : burpFrame.getTitle();
-            String input = (String) JOptionPane.showInputDialog(
+            JTextField field = new JTextField(initial, 40);
+            Dimension pref = field.getPreferredSize();
+            field.setPreferredSize(new Dimension(480, pref.height));
+            JLabel info = new JLabel("Enter window title (max " + MAX_TITLE_LENGTH + " characters).");
+            Object[] message = {info, field};
+
+            int result = JOptionPane.showConfirmDialog(
                     burpFrame,
-                    "Enter window title:",
+                    message,
                     "Set Custom Title",
-                    JOptionPane.PLAIN_MESSAGE,
-                    null,
-                    null,
-                    initial
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE
             );
-            if (input != null) {
-                input = input.trim();
-                if (input.isEmpty()) {
-                    JOptionPane.showMessageDialog(burpFrame, "Title cannot be empty.");
-                    return;
+
+            if (result == JOptionPane.OK_OPTION) {
+                String input = field.getText();
+                if (input != null) {
+                    input = input.trim();
+                    if (input.isEmpty()) {
+                        JOptionPane.showMessageDialog(burpFrame, "Title cannot be empty.");
+                        return;
+                    }
+                    int length = input.codePointCount(0, input.length());
+                    if (length > MAX_TITLE_LENGTH) {
+                        JOptionPane.showMessageDialog(
+                                burpFrame,
+                                "Title must be " + MAX_TITLE_LENGTH + " characters or fewer."
+                        );
+                        return;
+                    }
+                    customTitle = input;
+                    applyTitle(true);
+                    updateCurrentMenuItem();
+                    api.logging().logToOutput("Custom title = " + customTitle);
                 }
-                customTitle = input;
-                applyTitle(true);
-                updateCurrentMenuItem();
-                api.logging().logToOutput("Custom title = " + customTitle);
             }
         });
         titleMenu.add(setCustom);
